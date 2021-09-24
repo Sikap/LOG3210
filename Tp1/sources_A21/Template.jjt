@@ -76,9 +76,13 @@ MORE :
 // Keywords
 TOKEN :
 {
+    < IF: "if"> |
+    < ELSE: "else" > |
+    < ELSEIF: "else if" > |
 	< PRINT: "print" > |
-	< INPUT: "input" >
-
+	< INPUT: "input" > |
+	< WHILE: "while" > |
+	< DO: "do" >
 	// À compléter au besoin
 }
 
@@ -123,9 +127,9 @@ TOKEN :
 	< #DIGIT: ["0"-"9"] > |
 	< INTEGER: ["1"-"9"] (["0"-"9"])* | "0" > |
 	//TODO: Caution! Allows numbers such as "0000.23"... to fix!!!
-	< REAL: (<INTEGER>)+ "." (["0"-"9"])+ (<EXPONENT>)? |
-    			  (<INTEGER>)+ <EXPONENT> > |
-    < #EXPONENT: ["e","E"] (["+","-"])? (["0"-"9"])+ >
+	< REAL: (<INTEGER>)+ "." (["0"-"9"])+ (<EXPONENT>)? | (<INTEGER>)+ <EXPONENT> > |
+    < #EXPONENT: ["e","E"] (["+","-"])? (["0"-"9"])+ >|
+    < VARIABLES: <INTEGER> >
 }
 
 //
@@ -151,9 +155,10 @@ void Block() : { }
 }
 
 // à finir -- commencez ici!
-void AssignStmt() : { }
+//
+void AssignStmt() : {  }
 {
-    Identifier()
+    Identifier() <ASSIGN> Expr()
 }
 
 void Expr() : {}
@@ -169,8 +174,7 @@ void IntExpr() : { }
 void IntLogicExpr() : { }
 {
     IntBasicExpr() (LOOKAHEAD(2)
-         <LOGIC> IntBasicExpr()
-    )*
+         <LOGIC> IntBasicExpr())*
 }
 
 void IntBasicExpr() : { }
@@ -187,4 +191,80 @@ void Identifier() : { }
 void IntValue() : { }
 {
 	<INTEGER>
+}
+
+// 2.1 Les boucles while et do-while
+void WhileStmt() : {}
+{
+    <WHILE> <LPAREN> Expr() <RPAREN> ((WhileBody() | Stmt())| <SEMICOLON>)
+}
+
+void WhileBody() : {}
+{
+    <LACC> Block() <RACC>
+}
+
+void DoStmt() : {}
+{
+    <DO> <LACC> Block() <RACC> WhileStmt()
+}
+
+//2.2 Structures conditionnelles
+void IfStmt() : { }
+{
+    <IF> <LPAREN> Expr() <RPAREN>
+    ((IfBody()#IfBody)
+    (LOOKAHEAD(2) <ELSEIF> <LPAREN> Expr() <RPAREN> IfBody()#ElseIfBody)*
+    [LOOKAHEAD(2) <ELSE> IfBody()#Else])
+}
+
+void IfBody() #void : { }
+{
+    (Stmt() | <LACC> Block() <RACC>)
+}
+
+//2.6 Priorite des operations
+void AndOrExpr() #void : { }
+{
+    (CompExpr() [<LOGIC> AndOrExpr()])#OperateurAndOr(>1)
+}
+
+void CompExpr() #void : { }
+{
+    (AddExpr() [<COMPARE> CompExpr()])#OperateurComparaison(>1)
+}
+
+void AddExpr() #void : { }
+{
+    (MulExpr() [(<PLUS> | <MINUS>) AddExpr()])#AdditionSoustraction(>1)
+}
+
+void MulExpr() #void : { }
+{
+    (NegationExpr() [(<FOIS> | <DIV>) MulExpr()])#MultiplicationDivison(>1)
+}
+
+void NegationExpr() #void : { }
+{
+    (<MINUS> NegationExpr() #Negation) | NotExpr()
+}
+
+void NotExpr() #void : { }
+{
+    (<NOT> NotExpr() #Not) | ParExpr()
+}
+
+void ParExpr() #void : { }
+{
+   (<LPAREN> Expr() <RPAREN>)#Parenthese | BasicExpr()
+}
+void BasicExpr() #void : {}
+{
+	LOOKAHEAD(2) Identifier() |
+	IntValue() |
+	RealValue()
+}
+void RealValue() : { Token t;}
+{
+	t = <REAL> {jjtThis.setValue(Double.parseDouble(t.image));}
 }
