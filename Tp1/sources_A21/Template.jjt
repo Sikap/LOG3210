@@ -77,12 +77,15 @@ MORE :
 TOKEN :
 {
     < IF: "if"> |
+    < FOR: "for"> |
     < ELSE: "else" > |
     < ELSEIF: "else if" > |
 	< PRINT: "print" > |
 	< INPUT: "input" > |
 	< WHILE: "while" > |
-	< DO: "do" >
+	< DO: "do" > |
+	< TRUE:"true">|
+	< FALSE:"false">
 	// À compléter au besoin
 }
 
@@ -98,13 +101,12 @@ TOKEN :
 	< #GREATEQUAL: ">=" > |
 	< #DIFF: "!=" > |
 	< #EQUALEQUAL: "==" > |
-
 	< PLUS: "+" > |
 	< MINUS: "-" > |
 	< FOIS: "*" > |
 	< DIV: "/" > |
     < NOT: "!" > |
-
+    < AROW:"->"> |
 	< #EQUAL: "=" > |
 	< LPAREN: "(" > |
 	< RPAREN: ")" > |
@@ -128,8 +130,7 @@ TOKEN :
 	< INTEGER: ["1"-"9"] (["0"-"9"])* | "0" > |
 	//TODO: Caution! Allows numbers such as "0000.23"... to fix!!!
 	< REAL: (<INTEGER>)+ "." (["0"-"9"])+ (<EXPONENT>)? | (<INTEGER>)+ <EXPONENT> > |
-    < #EXPONENT: ["e","E"] (["+","-"])? (["0"-"9"])+ >|
-    < VARIABLES: <INTEGER> >
+    < #EXPONENT: ["e","E"] (["+","-"])? (["0"-"9"])+ >
 }
 
 //
@@ -141,7 +142,7 @@ TOKEN :
 // à compléter
 void Stmt() : { }
 {
-	AssignStmt() <SEMICOLON>
+	AssignStmt() <SEMICOLON> | WhileStmt() | DoWhileStmt() | IfStmt() | ForStmt() | AnonymeStmt()
 }
 
 ASTProgram Program() : { }
@@ -154,6 +155,54 @@ void Block() : { }
 	 (Stmt())+
 }
 
+// 2.1 Les boucles while et do-while
+void WhileStmt() : {}
+{
+    <WHILE> <LPAREN> Expr() <RPAREN> ((WhileBody() | Stmt())| <SEMICOLON>)
+}
+
+void WhileBody() : {}
+{
+    <LACC> Block() <RACC>
+}
+
+void DoWhileStmt() : {}
+{
+    <DO> <LACC> Block() <RACC> WhileStmt()
+}
+
+//2.2 Structures conditionnelles
+void IfStmt() : { }
+{
+    <IF> <LPAREN> Expr() <RPAREN>
+    ((IfBody()#IfBody)
+    (LOOKAHEAD(2) <ELSEIF> <LPAREN> Expr() <RPAREN> IfBody()#ElseIfBody)*
+    [LOOKAHEAD(2) <ELSE> IfBody()#Else])
+}
+
+void IfBody() #void : { }
+{
+    (Stmt() | <LACC> Block() <RACC>)
+}
+//2.3 Structure For
+void ForStmt():{}
+{
+   <FOR><LPAREN>AssignStmt()<SEMICOLON>Expr()<SEMICOLON>AssignStmt()<RPAREN>ForBody()
+}
+void ForBody() : {}
+{
+    <LACC> Block() <RACC>
+}
+//2.4 Fonctions anonymes
+void AnonymeStmt():{}
+{
+    <LPAREN><RPAREN><AROW>AnonymeBody()
+}
+void AnonymeBody() : {}
+{
+    <LACC> Block() <RACC>
+}
+//2.5 Assignations
 // à finir -- commencez ici!
 //
 void AssignStmt() : {  }
@@ -163,14 +212,16 @@ void AssignStmt() : {  }
 
 void Expr() : {}
 {
-    IntExpr()
+    IntExpr()|BoolExpr()
 }
-
 void IntExpr() : { }
 {
     IntLogicExpr()
 }
-
+void BoolExpr() : { }
+{
+    <TRUE>|<FALSE>
+}
 void IntLogicExpr() : { }
 {
     IntBasicExpr() (LOOKAHEAD(2)
@@ -191,36 +242,6 @@ void Identifier() : { }
 void IntValue() : { }
 {
 	<INTEGER>
-}
-
-// 2.1 Les boucles while et do-while
-void WhileStmt() : {}
-{
-    <WHILE> <LPAREN> Expr() <RPAREN> ((WhileBody() | Stmt())| <SEMICOLON>)
-}
-
-void WhileBody() : {}
-{
-    <LACC> Block() <RACC>
-}
-
-void DoStmt() : {}
-{
-    <DO> <LACC> Block() <RACC> WhileStmt()
-}
-
-//2.2 Structures conditionnelles
-void IfStmt() : { }
-{
-    <IF> <LPAREN> Expr() <RPAREN>
-    ((IfBody()#IfBody)
-    (LOOKAHEAD(2) <ELSEIF> <LPAREN> Expr() <RPAREN> IfBody()#ElseIfBody)*
-    [LOOKAHEAD(2) <ELSE> IfBody()#Else])
-}
-
-void IfBody() #void : { }
-{
-    (Stmt() | <LACC> Block() <RACC>)
 }
 
 //2.6 Priorite des operations
