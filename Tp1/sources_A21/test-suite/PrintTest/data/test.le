@@ -1,1 +1,5 @@
 // pour faire des tests
+a = 1 + 2;
+for(a = 2; b; c-b){
+  var = c;
+}
