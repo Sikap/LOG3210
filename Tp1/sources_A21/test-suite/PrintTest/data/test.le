@@ -1,5 +1,3 @@
-// pour faire des tests
-a = 1 + 2;
-for(a = 2; b; c-b){
-  var = c;
-}
+while (1 || 1){
+    var = TRUE || FALSE;
+};

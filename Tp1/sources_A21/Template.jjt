@@ -199,15 +199,19 @@ void ForBody() : {}
 //2.4 Fonctions anonymes
 void AnonymeStmt():{}
 {
-    <LPAREN>AnonymeParam()<RPAREN> <AROW> AnonymeBody() //
+    <LPAREN>AnonymeExpr()<RPAREN> <AROW> AnonymeBody()
 }
-void AnonymeParam():{}
+void AnonymeExpr():{}
 {
-    [Identifier() Expr()] (<COMMA>Identifier() Expr())*
+    [Expr()] (<COMMA> Identifier() BasicExpr())*
 }
 void AnonymeBody() : {}
 {
-    LOOKAHEAD(2) Block() | [<LACC>] [Block()] [<RETURN> Expr()] <SEMICOLON> [<RACC>]
+    Block() | <LACC> [Block()] [ReturnStmt()] <RACC>
+}
+void ReturnStmt():{}
+{
+    <RETURN> Expr() <SEMICOLON>
 }
 //2.5 Assignations
 // à finir -- commencez ici!
@@ -219,50 +223,42 @@ void AssignStmt() : {  }
 
 void Expr() : {}
 {
-    IntExpr()|BoolExpr()|RealValue()|AnonymeStmt()
+    LOOKAHEAD(2) AndOrExpr()|BoolExpr()|RealValue()|AnonymeStmt()|DeclareExpr()
 }
-void IntExpr() : { }
+/*void IntExpr() : { }
 {
-    IntLogicExpr() //| IntAddExpr()
-}
-void BoolExpr() : { }
-{
-    <TRUE>|<FALSE>
+    IntLogicExpr()
 }
 void IntLogicExpr() : { }
 {
-    IntBasicExpr() (LOOKAHEAD(2)<LOGIC> IntBasicExpr())*
+    IntBasicExpr() (LOOKAHEAD(2) <LOGIC> IntBasicExpr())*
 }
-
-/*void IntAddExpr():{}
-{
-    IntMultExpr() (LOOKAHEAD(2) (t = <PLUS> | t = <MINUS>) IntMultExpr())*
-}
-void IntMultExpr() : { Token t;}
-{
-    IntNegExpr() ((t = <FOIS> | t = <DIV>) IntNegExpr())*
-}
-void IntNegExpr() : {}
-{
-	( <MINUS> IntBasicExpr()) | IntBasicExpr()
-}*/
 
 void IntBasicExpr() : { }
 {
 	Identifier() |
 	IntValue()
+}*/
+void DeclareExpr():{}
+{
+	Identifier() Identifier()
 }
-
+void BoolExpr() : { }
+{
+    <TRUE>|<FALSE>
+}
 void Identifier() : { }
 {
 	<IDENTIFIER>
 }
-
 void IntValue() : { }
 {
 	<INTEGER>
 }
-
+void RealValue() : { Token t;}
+{
+	t = <REAL> {jjtThis.setValue(Double.parseDouble(t.image));}
+}
 //2.6 Priorite des operations
 void AndOrExpr() #void : { }
 {
@@ -303,8 +299,4 @@ void BasicExpr() #void : {}
 	LOOKAHEAD(2) Identifier() |
 	IntValue() |
 	RealValue()
-}
-void RealValue() : { Token t;}
-{
-	t = <REAL> {jjtThis.setValue(Double.parseDouble(t.image));}
 }
