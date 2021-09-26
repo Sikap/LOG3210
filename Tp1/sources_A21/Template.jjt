@@ -87,6 +87,8 @@ TOKEN :
 	< DO: "do" > |
 	< TRUE:"true">|
 	< FALSE:"false">|
+	< FLOTTANT:"float" >|
+	< ENTIER: "int">|
 	< RETURN: "return" >
 }
 
@@ -199,11 +201,7 @@ void ForBody() : {}
 //2.4 Fonctions anonymes
 void AnonymeStmt():{}
 {
-    <LPAREN>AnonymeExpr()<RPAREN> <AROW> AnonymeBody()
-}
-void AnonymeExpr():{}
-{
-    [Expr()] (<COMMA> Identifier() BasicExpr())*
+    <LPAREN>[TypeExpr()] (<COMMA> TypeExpr())*<RPAREN> <AROW> AnonymeBody()
 }
 void AnonymeBody() : {}
 {
@@ -223,7 +221,7 @@ void AssignStmt() : {  }
 
 void Expr() : {}
 {
-    LOOKAHEAD(2) AndOrExpr()|BoolExpr()|RealValue()|AnonymeStmt()|DeclareExpr()
+    LOOKAHEAD(2) AndOrExpr()|BoolExpr()|RealValue()|AnonymeStmt()
 }
 /*void IntExpr() : { }
 {
@@ -239,9 +237,17 @@ void IntBasicExpr() : { }
 	Identifier() |
 	IntValue()
 }*/
-void DeclareExpr():{}
+void TypeExpr():{ }
 {
-	Identifier() Identifier()
+    IntType() | FloatType()
+}
+void IntType(): { }
+{
+    <ENTIER> Identifier()
+}
+void FloatType():{ }
+{
+    <FLOTTANT> Identifier()
 }
 void BoolExpr() : { }
 {
