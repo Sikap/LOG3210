@@ -89,6 +89,7 @@ TOKEN :
 	< FALSE:"false">|
 	< FLOTTANT:"float" >|
 	< ENTIER: "int">|
+	< BOOLEAN: "bool" >|
 	< RETURN: "return" >
 }
 
@@ -162,7 +163,7 @@ void Block() : { }
 // 2.1 Les boucles while et do-while
 void WhileStmt() : {}
 {
-    <WHILE> <LPAREN> Expr() <RPAREN> ((WhileBody() | Stmt())| <SEMICOLON>)
+    <WHILE> <LPAREN> Expr() <RPAREN> (WhileBody() | Stmt()| <SEMICOLON>)
 }
 
 void WhileBody() : {}
@@ -201,7 +202,7 @@ void ForBody() : {}
 //2.4 Fonctions anonymes
 void AnonymeStmt():{}
 {
-    <LPAREN>[TypeExpr()] (<COMMA> TypeExpr())*<RPAREN> <AROW> AnonymeBody()
+    <LPAREN>[TypeExpr()] (<COMMA> TypeExpr())* <RPAREN> <AROW> AnonymeBody()
 }
 void AnonymeBody() : {}
 {
@@ -221,7 +222,7 @@ void AssignStmt() : {  }
 
 void Expr() : {}
 {
-    LOOKAHEAD(2) AndOrExpr()|BoolExpr()|RealValue()|AnonymeStmt()
+    LOOKAHEAD(2) AndOrExpr()|AnonymeStmt()
 }
 /*void IntExpr() : { }
 {
@@ -239,7 +240,7 @@ void IntBasicExpr() : { }
 }*/
 void TypeExpr():{ }
 {
-    IntType() | FloatType()
+    IntType() | FloatType() | BoolType()
 }
 void IntType(): { }
 {
@@ -248,6 +249,10 @@ void IntType(): { }
 void FloatType():{ }
 {
     <FLOTTANT> Identifier()
+}
+void BoolType():{ }
+{
+    <BOOLEAN> Identifier()
 }
 void BoolExpr() : { }
 {
@@ -304,5 +309,6 @@ void BasicExpr() #void : {}
 {
 	LOOKAHEAD(2) Identifier() |
 	IntValue() |
-	RealValue()
+	RealValue() |
+	BoolExpr()
 }
