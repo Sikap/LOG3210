@@ -52,7 +52,6 @@ public class SemantiqueVisitor implements ParserVisitor {
     public Object visit(ASTProgram node, Object data) {
         node.childrenAccept(this, data);
         writer.print(String.format("{VAR:%d, WHILE:%d, IF:%d, FOR:%d, OP:%d}", VAR, WHILE, IF, FOR, OP));
-
         return null;
     }
 
@@ -69,9 +68,11 @@ public class SemantiqueVisitor implements ParserVisitor {
     @Override
     public Object visit(ASTNormalDeclaration node, Object data) {
         String varName = ((ASTIdentifier) node.jjtGetChild(0)).getValue();
-
-
-        symbolTable.put(varName, node.getValue().equals("num") ? VarType.num : VarType.bool);
+        if(!symbolTable.containsKey(varName)){
+            symbolTable.put(varName, node.getValue().equals("num") ? VarType.num : VarType.bool);
+        }else {
+            writer.print(String.format("Invalid declaration... variable "+ varName + " already exists"));
+        }
         return null;
     }
 
@@ -103,6 +104,7 @@ public class SemantiqueVisitor implements ParserVisitor {
     @Override
     public Object visit(ASTForEachStmt node, Object data) {
         node.childrenAccept(this, data);
+        FOR++;
         return null;
     }
 
@@ -111,6 +113,7 @@ public class SemantiqueVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTForStmt node, Object data) {
+        FOR++;
         return null;
     }
 
@@ -129,14 +132,14 @@ public class SemantiqueVisitor implements ParserVisitor {
     @Override
     public Object visit(ASTIfStmt node, Object data) {
        node.childrenAccept(this, data);
-
+        IF++;
         return null;
     }
 
     @Override
     public Object visit(ASTWhileStmt node, Object data) {
         node.childrenAccept(this, data);
-
+        WHILE++;
         return null;
     }
 
@@ -188,13 +191,14 @@ public class SemantiqueVisitor implements ParserVisitor {
     @Override
     public Object visit(ASTAddExpr node, Object data) {
         node.childrenAccept(this, data);
-
+        OP++;
         return null;
     }
 
     @Override
     public Object visit(ASTMulExpr node, Object data) {
         node.childrenAccept(this, data);
+        OP++;
 
         return null;
     }
@@ -254,7 +258,7 @@ public class SemantiqueVisitor implements ParserVisitor {
     @Override
     public Object visit(ASTIdentifier node, Object data) {
         node.childrenAccept(this, data);
-
+        VAR++;
         return null;
     }
 
@@ -276,8 +280,7 @@ public class SemantiqueVisitor implements ParserVisitor {
     private class DataStruct {
         public VarType type;
 
-        public DataStruct() {
-        }
+        public DataStruct() {}
 
         public DataStruct(VarType p_type) {
             type = p_type;
