@@ -224,20 +224,6 @@ void Expr() : {}
 {
     LOOKAHEAD(2) AndOrExpr()|AnonymeStmt()
 }
-/*void IntExpr() : { }
-{
-    IntLogicExpr()
-}
-void IntLogicExpr() : { }
-{
-    IntBasicExpr() (LOOKAHEAD(2) <LOGIC> IntBasicExpr())*
-}
-
-void IntBasicExpr() : { }
-{
-	Identifier() |
-	IntValue()
-}*/
 void TypeExpr():{ }
 {
     IntType() | FloatType() | BoolType()
