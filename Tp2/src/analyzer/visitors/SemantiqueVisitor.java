@@ -68,10 +68,10 @@ public class SemantiqueVisitor implements ParserVisitor {
     @Override
     public Object visit(ASTNormalDeclaration node, Object data) {
         String varName = ((ASTIdentifier) node.jjtGetChild(0)).getValue();
-        if(!symbolTable.containsKey(varName)){
-            symbolTable.put(varName, node.getValue().equals("num") ? VarType.num : VarType.bool);
-        }else {
+        if(symbolTable.containsKey(varName)){
             writer.print(String.format("Invalid declaration... variable "+ varName + " already exists"));
+        }else {
+            symbolTable.put(varName, node.getValue().equals("num") ? VarType.num : VarType.bool);
         }
         return null;
     }
@@ -91,7 +91,6 @@ public class SemantiqueVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTStmt node, Object data) {
-
         node.childrenAccept(this, data);
         return null;
     }
@@ -103,8 +102,19 @@ public class SemantiqueVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTForEachStmt node, Object data) {
-        node.childrenAccept(this, data);
-        FOR++;
+        String identifierName = ((ASTIdentifier) node.jjtGetChild(1)).getValue();
+        String normalDeclarationType = ((ASTNormalDeclaration) node.jjtGetChild(0)).getValue();
+        if(symbolTable.containsKey(identifierName)){
+            String identifierType = symbolTable.get(identifierName).name();
+            if (identifierType.equals(normalDeclarationType)){
+                node.childrenAccept(this, data);
+                FOR++;
+            }else{
+                writer.print(String.format("Array type " + identifierType + " is incompatible with declared variable of type " + normalDeclarationType));
+            }
+        }else {
+            writer.print(String.format("Invalid use of undefined Identifier "+ identifierName));
+        }
         return null;
     }
 
@@ -149,8 +159,12 @@ public class SemantiqueVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTAssignStmt node, Object data) {
-        node.childrenAccept(this, data);
-
+        String varName = ((ASTIdentifier) node.jjtGetChild(0)).getValue();
+        if(symbolTable.containsKey(varName)){
+            node.childrenAccept(this, data);
+        }else {
+            writer.print(String.format("Invalid use of undefined Identifier "+ varName));
+        }
         return null;
     }
 
