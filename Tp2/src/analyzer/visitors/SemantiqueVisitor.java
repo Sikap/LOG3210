@@ -4,6 +4,7 @@ import analyzer.SemantiqueError;
 import analyzer.ast.*;
 
 import javax.lang.model.element.VariableElement;
+import javax.xml.crypto.Data;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -143,7 +144,8 @@ public class SemantiqueVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTForStmt node, Object data) {
-        node.childrenAccept(this, data);
+        DataStruct varData = new DataStruct(VarType.bool);
+        node.childrenAccept(this, varData);
         FOR++;
         return null;
     }
@@ -162,14 +164,21 @@ public class SemantiqueVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTIfStmt node, Object data) {
-       node.childrenAccept(this, data);
+        DataStruct varData = new DataStruct(VarType.bool);
+        node.childrenAccept(this, varData);
+        if(varData.type != VarType.bool)
+            throw new SemantiqueError("Invalid type in condition");
         IF++;
         return null;
     }
 
     @Override
-    public Object visit(ASTWhileStmt node, Object data) {
-        node.childrenAccept(this, data);
+    public Object visit(ASTWhileStmt node, Object data) throws SemantiqueError {
+        DataStruct varData = new DataStruct(VarType.bool);
+        node.childrenAccept(this, varData);
+        if(varData.type != VarType.bool)
+            throw new SemantiqueError("Invalid type in condition");
+
         WHILE++;
         return null;
     }
@@ -183,7 +192,11 @@ public class SemantiqueVisitor implements ParserVisitor {
         String varName = ((ASTIdentifier) node.jjtGetChild(0)).getValue();
 //        SimpleNode normalDeclarationType = ((ASTExpr) node.jjtGetChild(1));
         if(symbolTable.containsKey(varName)){
-            node.childrenAccept(this, varName);
+            DataStruct varData = new DataStruct(symbolTable.get(varName));
+            node.childrenAccept(this, varData);
+            if(symbolTable.get(varName) != varData.type)
+                throw new SemantiqueError(String.format("Invalid type in assignation of Identifier "+ varName +"... was expecting "+ symbolTable.get(varName) + " but got "+ varData.type));
+
         }else {
             throw new SemantiqueError(String.format("Invalid use of undefined Identifier "+ varName));
         }
@@ -210,12 +223,10 @@ public class SemantiqueVisitor implements ParserVisitor {
         */
 
         ArrayList<VarType> childrenTypes = new ArrayList<>();
-        int childNum = node.jjtGetNumChildren();
-        if(childNum > 1){
-            OP+= childNum-1;
-            for(int i = 0; i < childNum; i++){
-                callChildren((SimpleNode) node.jjtGetChild(i), data, VarType.bool);
-            }
+        if(node.jjtGetNumChildren() > 1){
+            OP+= node.jjtGetNumChildren()-1;
+            callChildren(node, data, VarType.bool);
+            ((DataStruct)data).type = VarType.bool;
         }else{
             node.childrenAccept(this, data);
         }
@@ -224,9 +235,11 @@ public class SemantiqueVisitor implements ParserVisitor {
     }
 
     private void callChildren(SimpleNode node, Object data, VarType validType) {
-        node.childrenAccept(this, data);
-//        if(data != validType)
-//            throw new SemantiqueError(String.format("Invalid type for Identifier"));
+        for(int i = 0; i < node.jjtGetNumChildren(); i++){
+            Object value = ((SimpleNode) node.jjtGetChild(i)).childrenAccept(this, data);
+//            if(symbolTable.get(data) != validType)
+//                throw new SemantiqueError(String.format("Invalid type for Identifier"));
+        }
     }
 
     /*
@@ -238,9 +251,6 @@ public class SemantiqueVisitor implements ParserVisitor {
     public Object visit(ASTAddExpr node, Object data) {
         if(!node.getOps().isEmpty()) {
             OP += node.getOps().size();
-//            if(node.jjtGetNumChildren() > 1){
-//                data = VarType.bool;
-//            }
         }
         node.childrenAccept(this, data);
         return null;
@@ -248,19 +258,20 @@ public class SemantiqueVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTMulExpr node, Object data) {
-        node.childrenAccept(this, data);
         if(!node.getOps().isEmpty()) {
             OP += node.getOps().size();
         }
+        node.childrenAccept(this, data);
         return null;
     }
 
     @Override
     public Object visit(ASTBoolExpr node, Object data) {
-        node.childrenAccept(this, data);
         if(!node.getOps().isEmpty()) {
             OP += node.getOps().size();
+            ((DataStruct)data).type = VarType.bool;
         }
+        node.childrenAccept(this, data);
         return null;
     }
 
@@ -288,10 +299,10 @@ public class SemantiqueVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTUnaExpr node, Object data) {
-        node.childrenAccept(this, data);
         if(!node.getOps().isEmpty()) {
             OP += node.getOps().size();
         }
+        node.childrenAccept(this, data);
         return null;
     }
 
@@ -309,23 +320,16 @@ public class SemantiqueVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTBoolValue node, Object data) throws SemantiqueError {
-        if(symbolTable.get(data) == VarType.bool)
-            node.childrenAccept(this, VarType.bool);
-        else
-            throw new SemantiqueError(String.format("Invalid type in assignation of Identifier "+ data +"... was expecting "+ symbolTable.get(data) + " but got "+ VarType.bool));
-        return VarType.bool;
+            node.childrenAccept(this, ((DataStruct)data).type = VarType.bool);
+        return null;
     }
 
     @Override
     public Object visit(ASTIdentifier node, Object data) {
         if(node.jjtGetParent().getClass() == ASTGenValue.class ){
             if(symbolTable.containsKey(node.getValue())){
-                if(symbolTable.get(data) == symbolTable.get(node.getValue())){
-                    node.childrenAccept(this, data);
-                }
-                else{
-                    throw new SemantiqueError(String.format("Invalid type in assignation of Identifier "+ data +"... was expecting "+ symbolTable.get(data) + " but got "+ symbolTable.get(node.getValue())));
-                }
+                ((DataStruct)data).type = symbolTable.get(node.getValue());
+                node.childrenAccept(this, data);
             }else{
                 throw new SemantiqueError(String.format("Invalid use of undefined Identifier "+ node.getValue()));
             }
@@ -337,11 +341,8 @@ public class SemantiqueVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTIntValue node, Object data) throws SemantiqueError {
-        if(symbolTable.get(data) == VarType.num)
-            node.childrenAccept(this, VarType.num);
-        else
-            throw new SemantiqueError(String.format("Invalid type in assignation of Identifier "+ data +"... was expecting "+ symbolTable.get(data) + " but got "+ VarType.num));
-        return VarType.num;
+            node.childrenAccept(this, ((DataStruct)data).type = VarType.num);
+        return null;
     }
 
 
