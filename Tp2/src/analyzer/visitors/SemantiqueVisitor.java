@@ -47,7 +47,7 @@ public class SemantiqueVisitor implements ParserVisitor {
 
     @Override
     public Object visit(SimpleNode node, Object data) {
-//        node.childrenAccept(this, data);
+         //node.childrenAccept(this, data);
         return null;
     }
 
@@ -146,6 +146,8 @@ public class SemantiqueVisitor implements ParserVisitor {
     public Object visit(ASTForStmt node, Object data) {
         DataStruct varData = new DataStruct(VarType.bool);
         node.childrenAccept(this, varData);
+        if(varData.type != VarType.bool)
+            throw new SemantiqueError("Invalid type in condition");
         FOR++;
         return null;
     }
@@ -224,7 +226,7 @@ public class SemantiqueVisitor implements ParserVisitor {
 
         ArrayList<VarType> childrenTypes = new ArrayList<>();
         if(node.jjtGetNumChildren() > 1){
-            OP+= node.jjtGetNumChildren()-1;
+            OP += node.jjtGetNumChildren()-1;
             callChildren(node, data, VarType.bool);
             ((DataStruct)data).type = VarType.bool;
         }else{
