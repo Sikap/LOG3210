@@ -2,6 +2,7 @@ package analyzer.visitors;
 
 import analyzer.ast.*;
 
+import javax.xml.crypto.Data;
 import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Vector;
@@ -76,20 +77,22 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
     @Override
     public Object visit(ASTBlock node, Object data) {
         node.childrenAccept(this, data);
-
         return null;
     }
 
     @Override
     public Object visit(ASTStmt node, Object data) {
-        node.childrenAccept(this, data);
+        for(int i=0; i< node.jjtGetNumChildren(); i++){
+            node.jjtGetChild(i).jjtAccept(this,data);
+            writer.println(genLabel());
+        }
+        //node.childrenAccept(this, data);
         return null;
     }
 
     @Override
     public Object visit(ASTForStmt node, Object data) {
         node.childrenAccept(this, data);
-
         return null;
     }
 
@@ -98,33 +101,44 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTIfStmt node, Object data) {
-        node.childrenAccept(this, data);
-
+//        if(node.jjtGetNumChildren() == 3){
+//
+//        }else{
+//            writer.println(genLabel());
+//        }
+        //node.childrenAccept(this, data);
         return null;
     }
 
     @Override
     public Object visit(ASTWhileStmt node, Object data) {
         node.childrenAccept(this, data);
-
         return null;
     }
 
 
     @Override
     public Object visit(ASTAssignStmt node, Object data) {
-        node.childrenAccept(this, data);
-
-        return null;
+        Datastruct d = (Datastruct) node.jjtGetChild(1).jjtAccept(this, data);
+        ASTIdentifier id = (ASTIdentifier) node.jjtGetChild(0);
+        writer.println(id.getValue() +" = "+ d.addr);
+        //writer.println(genLabel());
+        return d;
     }
 
 
 
     @Override
     public Object visit(ASTExpr node, Object data){
-        node.childrenAccept(this, data);
-
-        return null;
+        //Object value = node.childrenAccept(this, data);
+        Datastruct d = new Datastruct();
+        Datastruct tmp;
+        for(int i = 0; i < node.jjtGetNumChildren(); i++){
+             tmp = (Datastruct) node.jjtGetChild(i).jjtAccept(this, data);
+            if(tmp.addr != null)
+                d.addr += tmp.addr;
+        }
+        return d;
     }
 
     //Expression arithmétique
@@ -136,47 +150,75 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
     la taille de ops sera toujours 1 de moins que la taille de jjtGetNumChildren
      */
     public Object generateCodeForAddAndMultiplication(SimpleNode node, Object data, Vector<String> ops) {
-        return null;
+        Datastruct d = new Datastruct(genId(),VarType.Number);
+        Datastruct tmp;
+        StringBuilder addr = new StringBuilder();
+        for(int i=0 ; i < node.jjtGetNumChildren(); i++){
+            tmp = (Datastruct) node.jjtGetChild(i).jjtAccept(this, data);
+            if(tmp.addr != null)
+                addr.append(tmp.addr);
+            if(i < ops.size())
+                addr.append(" ").append(ops.elementAt(i)).append(" ");
+        }
+        writer.println(d.addr + " = " + addr);
+        return d;
     }
 
     @Override
     public Object visit(ASTAddExpr node, Object data) {
-        node.childrenAccept(this, data);
-
-        return null;
+        Datastruct d;
+        if(node.getOps().size() > 0){
+            d = (Datastruct) generateCodeForAddAndMultiplication(node, data, node.getOps());
+        }else {
+            d = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
+        }
+        return d;
     }
 
     @Override
     public Object visit(ASTMulExpr node, Object data) {
-        node.childrenAccept(this, data);
-
-        return null;
+        Datastruct d;
+        if(node.getOps().size() > 0){
+            d = (Datastruct) generateCodeForAddAndMultiplication(node, data, node.getOps());
+        }else {
+            d = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
+        }
+        return d;
     }
 
     //UnaExpr est presque pareil au deux précédente. la plus grosse différence est qu'il ne va pas
     //chercher un deuxième noeud enfant pour avoir une valeur puisqu'il s'agit d'une opération unaire.
     @Override
     public Object visit(ASTUnaExpr node, Object data) {
-        node.childrenAccept(this, data);
-
-        return null;
+        return node.jjtGetChild(0).jjtAccept(this, data);
     }
 
     //expression logique
     @Override
     public Object visit(ASTBoolExpr node, Object data) {
-        node.childrenAccept(this, data);
-
-        return null;
+        /*Datastruct d = new Datastruct();
+        Datastruct tmp;
+        for(int i =0 ; i < node.jjtGetNumChildren(); i++){
+            tmp = (Datastruct) node.jjtGetChild(i).jjtAccept(this, data);
+            if(tmp.addr != null)
+                d.addr += tmp.addr;
+        }*/
+        return (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
     }
 
 
 
     @Override
     public Object visit(ASTCompExpr node, Object data) {
-        node.childrenAccept(this, data);
-
-        return null;
+        //Object value = node.childrenAccept(this, data);
+       /* Datastruct d = new Datastruct();
+        Datastruct tmp;
+        for(int i =0 ; i < node.jjtGetNumChildren(); i++){
+            tmp = (Datastruct) node.jjtGetChild(i).jjtAccept(this, data);
+            if(tmp.addr != null)
+                d.addr += tmp.addr;
+        }*/
+        return (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
     }
 
 
@@ -187,16 +229,21 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTNotExpr node, Object data) {
-        node.childrenAccept(this, data);
-
-        return null;
+        Datastruct d;
+        if((node.getOps().size() % 2) != 0){
+            d = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
+            String addr = genId();
+            String op = (String) node.getOps().elementAt(node.getOps().size() - 1);
+            writer.print(addr + " = "+ op + d.addr);
+        }else {
+            d = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
+        }
+        return d;
     }
 
     @Override
     public Object visit(ASTGenValue node, Object data) {
-        node.childrenAccept(this, data);
-
-        return null;
+        return node.jjtGetChild(0).jjtAccept(this, data);
     }
 
     /*
@@ -205,9 +252,7 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTBoolValue node, Object data) {
-        node.childrenAccept(this, data);
-
-        return null;
+        return new Datastruct(Boolean.toString(node.getValue()), VarType.Bool);
     }
 
 
@@ -218,22 +263,32 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTIdentifier node, Object data) {
-        node.childrenAccept(this, data);
-
-        return null;
+        return new Datastruct(node.getValue(), SymbolTable.getOrDefault(node.getValue(), VarType.Number));
     }
 
     @Override
     public Object visit(ASTIntValue node, Object data) {
         node.childrenAccept(this, data);
-
-        return null;
+        return new Datastruct(Integer.toString(node.getValue()), VarType.Number);
     }
 
     //des outils pour vous simplifier la vie et vous enligner dans le travail
     public enum VarType {
         Bool,
         Number
+    }
+
+    private class Datastruct {
+        String addr;
+        VarType type;
+        BoolLabel lbool;
+
+        public Datastruct() {addr = "";}
+
+        public Datastruct(String p_addr, VarType p_type){
+            type = p_type;
+            addr = p_addr;
+        }
     }
 
     //utile surtout pour envoyé de l'informations au enfant des expressions logiques.
