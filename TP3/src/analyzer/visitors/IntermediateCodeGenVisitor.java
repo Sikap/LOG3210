@@ -52,8 +52,9 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTProgram node, Object data)  {
-        node.childrenAccept(this, data);
-
+        String label = genLabel();
+        node.childrenAccept(this, label);
+        this.writer.println(label);
         return null;
     }
 
@@ -77,16 +78,16 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTBlock node, Object data) {
-        String endLabel = genLabel();
-        String label = endLabel;
+        String endLabel =  data.toString();
         for(int i=0; i < node.jjtGetNumChildren(); i++){
-            node.jjtGetChild(i).jjtAccept(this, label);
-            if(i < node.jjtGetNumChildren() - 1){
-                label = genLabel();
-                writer.println(label);
+            if(i == node.jjtGetNumChildren() - 1){
+                node.jjtGetChild(i).jjtAccept(this, endLabel);
+            }else{
+                String beginStatement = genLabel();
+                node.jjtGetChild(i).jjtAccept(this, beginStatement);
+                this.writer.println(beginStatement);
             }
         }
-        writer.println(endLabel);
         return null;
     }
 
