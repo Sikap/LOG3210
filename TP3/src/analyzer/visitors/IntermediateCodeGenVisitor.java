@@ -76,7 +76,13 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTBlock node, Object data) {
-        node.childrenAccept(this, data);
+        String label = genLabel();
+        for(int i=0; i < node.jjtGetNumChildren(); i++){
+            node.jjtGetChild(i).jjtAccept(this,data);
+            if(i < node.jjtGetNumChildren() - 1)
+                writer.println(genLabel());
+        }
+        writer.println(label);
         return null;
     }
 
@@ -84,9 +90,7 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
     public Object visit(ASTStmt node, Object data) {
         for(int i=0; i< node.jjtGetNumChildren(); i++){
             node.jjtGetChild(i).jjtAccept(this,data);
-            writer.println(genLabel());
         }
-        //node.childrenAccept(this, data);
         return null;
     }
 
@@ -122,7 +126,6 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
         Datastruct d = (Datastruct) node.jjtGetChild(1).jjtAccept(this, data);
         ASTIdentifier id = (ASTIdentifier) node.jjtGetChild(0);
         writer.println(id.getValue() +" = "+ d.addr);
-        //writer.println(genLabel());
         return d;
     }
 
@@ -130,7 +133,6 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTExpr node, Object data){
-        //Object value = node.childrenAccept(this, data);
         Datastruct d = new Datastruct();
         Datastruct tmp;
         for(int i = 0; i < node.jjtGetNumChildren(); i++){
@@ -190,7 +192,24 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
     //chercher un deuxième noeud enfant pour avoir une valeur puisqu'il s'agit d'une opération unaire.
     @Override
     public Object visit(ASTUnaExpr node, Object data) {
-        return node.jjtGetChild(0).jjtAccept(this, data);
+        Datastruct d;
+        if(node.getOps().size() > 0){
+            /*d = new Datastruct( genId(), VarType.Number);
+            Datastruct tmp = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
+            writer.println(d.addr + " = " + node.getOps().elementAt(0) + " " + tmp.addr);*/
+            //String addr = genId();
+            d = new Datastruct( genId(), VarType.Number);
+            Datastruct tmp = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
+            writer.println(d.addr + " = " + node.getOps().elementAt(0) + " " + tmp.addr);
+            for(int i = 1; i < node.getOps().size(); i++){
+                tmp = new Datastruct(genId(),VarType.Number);
+                writer.println(tmp.addr + " = " + node.getOps().elementAt(0) + " " + d.addr);
+                d = tmp;
+            }
+            //d.addr = addr;
+        }else d = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
+
+        return d;
     }
 
     //expression logique
