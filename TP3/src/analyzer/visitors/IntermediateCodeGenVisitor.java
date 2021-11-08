@@ -76,13 +76,16 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTBlock node, Object data) {
-        String label = genLabel();
+        String endLabel = genLabel();
+        String label = endLabel;
         for(int i=0; i < node.jjtGetNumChildren(); i++){
-            node.jjtGetChild(i).jjtAccept(this,data);
-            if(i < node.jjtGetNumChildren() - 1)
-                writer.println(genLabel());
+            node.jjtGetChild(i).jjtAccept(this, label);
+            if(i < node.jjtGetNumChildren() - 1){
+                label = genLabel();
+                writer.println(label);
+            }
         }
-        writer.println(label);
+        writer.println(endLabel);
         return null;
     }
 
@@ -123,10 +126,21 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTAssignStmt node, Object data) {
-        Datastruct d = (Datastruct) node.jjtGetChild(1).jjtAccept(this, data);
-        ASTIdentifier id = (ASTIdentifier) node.jjtGetChild(0);
-        writer.println(id.getValue() +" = "+ d.addr);
-        return d;
+        Datastruct id = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
+        if(id.type == VarType.Number){
+            Datastruct d = (Datastruct) node.jjtGetChild(1).jjtAccept(this, data);
+            writer.println(id.addr +" = "+ d.addr);
+        }else{
+            String labelTrue = genLabel();
+            String labelFalse = genLabel();
+
+            //Ici il faut générer les deux cases. Problème est qu'il faut set la valeur bool pour faire 2 cas proprement
+            Datastruct d = (Datastruct) node.jjtGetChild(1).jjtAccept(this, new BoolLabel(labelTrue, (String) data));
+            writer.println(id.addr +" = "+ d.addr);
+            node.jjtGetChild(1).jjtAccept(this, new BoolLabel(labelTrue, labelFalse));
+            writer.println(id.addr +" = "+ '0');
+        }
+        return null;
     }
 
 
@@ -216,6 +230,16 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
     @Override
     public Object visit(ASTBoolExpr node, Object data) {
         /*Datastruct d = new Datastruct();
+        if(node.getOps().size() > 0){
+            for(int i = 0; i <= node.getOps().size(); i++){
+                d = new Datastruct( genId(), VarType.Number);
+                //Datastruct tmp = (Datastruct) node.jjtGetChild(i).jjtAccept(this, data);
+                writer.println(d.addr + " = " + node.getOps().elementAt(i) + " " + tmp.addr);
+            }
+        }else {
+            d = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
+        }*/
+        /*Datastruct d = new Datastruct();
         Datastruct tmp;
         for(int i =0 ; i < node.jjtGetNumChildren(); i++){
             tmp = (Datastruct) node.jjtGetChild(i).jjtAccept(this, data);
@@ -271,7 +295,11 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTBoolValue node, Object data) {
-        return new Datastruct(Boolean.toString(node.getValue()), VarType.Bool);
+        Datastruct d = new Datastruct(Integer.toString(node.getValue() ? 1 : 0), VarType.Bool);
+        BoolLabel b = (BoolLabel) data;
+        writer.println("goto " + b.lTrue);
+        writer.println(node.getValue() ? b.lTrue : b.lFalse );
+        return d;
     }
 
 
