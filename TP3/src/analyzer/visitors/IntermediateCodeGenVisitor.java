@@ -5,6 +5,7 @@ import analyzer.ast.*;
 import javax.xml.crypto.Data;
 import java.io.PrintWriter;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.Vector;
 
 
@@ -133,12 +134,25 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
         }else{
             String labelTrue = genLabel();
             String labelFalse = genLabel();
-
+            BoolLabel b = new BoolLabel(labelTrue, labelFalse);
             //Ici il faut générer les deux cases. Problème est qu'il faut set la valeur bool pour faire 2 cas proprement
-            Datastruct d = (Datastruct) node.jjtGetChild(1).jjtAccept(this, new BoolLabel(labelTrue, (String) data));
-            writer.println(id.addr +" = "+ d.addr);
-            node.jjtGetChild(1).jjtAccept(this, new BoolLabel(labelTrue, labelFalse));
-            writer.println(id.addr +" = "+ '0');
+            Datastruct d = (Datastruct) node.jjtGetChild(1).jjtAccept(this, b);
+            writer.println(b.lTrue);
+            writer.println(id.addr +" = 1");
+            writer.println("goto " + (String) data);
+            writer.println(b.lFalse);
+            writer.println(id.addr +" = 0");
+//            writer.println(Objects.equals(d.addr, "1") ? b.lTrue : b.lFalse );
+//            writer.println(id.addr +" = "+ d.addr);
+//            writer.println("goto " + (String) data);
+            /*if (Objects.equals(d.addr, "0")) {
+                writer.println(b.lTrue);
+                writer.println(id.addr +" = 1");
+            } else {
+                writer.println(b.lFalse);
+                writer.println(id.addr +" = 0");
+            }*/
+
         }
         return null;
     }
@@ -297,8 +311,10 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
     public Object visit(ASTBoolValue node, Object data) {
         Datastruct d = new Datastruct(Integer.toString(node.getValue() ? 1 : 0), VarType.Bool);
         BoolLabel b = (BoolLabel) data;
-        writer.println("goto " + b.lTrue);
-        writer.println(node.getValue() ? b.lTrue : b.lFalse );
+        if(node.getValue())
+            writer.println("goto " + b.lTrue);
+        else
+            writer.println("goto " + b.lFalse);
         return d;
     }
 
