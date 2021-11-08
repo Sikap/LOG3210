@@ -149,17 +149,15 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTAssignStmt node, Object data) {
-        ASTIdentifier identifier = (ASTIdentifier)node.jjtGetChild(0);
-        VarType type = SymbolTable.get(identifier.getValue());
+        String identifierName = ((ASTIdentifier)node.jjtGetChild(0)).getValue();
+        VarType type = SymbolTable.get(identifierName);
         if(type == VarType.Number){
-            Datastruct id = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
             Datastruct d = (Datastruct) node.jjtGetChild(1).jjtAccept(this, data);
-            writer.println(id.addr +" = "+ d.addr);
+            writer.println(identifierName +" = "+ d.addr);
         }else{
             String labelTrue = genLabel();
             String labelFalse = genLabel();
             BoolLabel b = new BoolLabel(labelTrue, labelFalse);
-            //Ici il faut générer les deux cases. Problème est qu'il faut set la valeur bool pour faire 2 cas proprement
             Datastruct id = (Datastruct) node.jjtGetChild(0).jjtAccept(this, b);
             Datastruct d = (Datastruct) node.jjtGetChild(1).jjtAccept(this, b);
             writer.println(b.lTrue);
@@ -167,17 +165,6 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
             writer.println("goto " + (String) data);
             writer.println(b.lFalse);
             writer.println(id.addr +" = 0");
-//            writer.println(Objects.equals(d.addr, "1") ? b.lTrue : b.lFalse );
-//            writer.println(id.addr +" = "+ d.addr);
-//            writer.println("goto " + (String) data);
-            /*if (Objects.equals(d.addr, "0")) {
-                writer.println(b.lTrue);
-                writer.println(id.addr +" = 1");
-            } else {
-                writer.println(b.lFalse);
-                writer.println(id.addr +" = 0");
-            }*/
-
         }
         return null;
     }
@@ -186,14 +173,14 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTExpr node, Object data){
-        Datastruct d = new Datastruct();
+        /*Datastruct d = new Datastruct();
         Datastruct tmp;
         for(int i = 0; i < node.jjtGetNumChildren(); i++){
              tmp = (Datastruct) node.jjtGetChild(i).jjtAccept(this, data);
             if(tmp!=null && tmp.addr != null)
                 d.addr += tmp.addr;
-        }
-        return d;
+        }*/
+        return (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
     }
 
     //Expression arithmétique
@@ -268,52 +255,32 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
     @Override
     public Object visit(ASTBoolExpr node, Object data) {
         if(!node.getOps().isEmpty()){
-            BoolLabel dataBoolLabel = (BoolLabel) data;
+            String op = node.getOps().elementAt(0).toString();
+            BoolLabel dataBl = (BoolLabel) data;
             //B1
-            BoolLabel firstBool = new BoolLabel("", "");
+            BoolLabel firstBoolLabel = new BoolLabel("", "");
             //B2
             BoolLabel secondBool = new BoolLabel("", "");
-            if(node.getOps().get(0).equals("&&")){
-                firstBool.lTrue = genLabel();
-                firstBool.lFalse = dataBoolLabel.lFalse;
-                secondBool.lTrue = dataBoolLabel.lTrue;
-                secondBool.lFalse = dataBoolLabel.lFalse;
-                node.jjtGetChild(0).jjtAccept(this, firstBool);
-                this.writer.println(firstBool.lTrue);
+            if(op.equals("&&")){
+                firstBoolLabel.lTrue = genLabel();
+                firstBoolLabel.lFalse = dataBl.lFalse;
+                secondBool.lTrue = dataBl.lTrue;
+                secondBool.lFalse = dataBl.lFalse;
+                node.jjtGetChild(0).jjtAccept(this, firstBoolLabel);
+                this.writer.println(firstBoolLabel.lTrue);
                 node.jjtGetChild(1).jjtAccept(this, secondBool);
-            } else if(node.getOps().get(0).equals("||")){
-                firstBool.lTrue = dataBoolLabel.lTrue;
-                firstBool.lFalse = genLabel();
-                secondBool.lTrue = dataBoolLabel.lTrue;
-                secondBool.lFalse = dataBoolLabel.lFalse;
-                node.jjtGetChild(0).jjtAccept(this, firstBool);
-                this.writer.println(firstBool.lFalse);
+            } else if(op.equals("||")){
+                firstBoolLabel.lTrue = dataBl.lTrue;
+                firstBoolLabel.lFalse = genLabel();
+                secondBool.lTrue = dataBl.lTrue;
+                secondBool.lFalse = dataBl.lFalse;
+                node.jjtGetChild(0).jjtAccept(this, firstBoolLabel);
+                this.writer.println(firstBoolLabel.lFalse);
                 node.jjtGetChild(1).jjtAccept(this, secondBool);
             }
             return null;
         }
         return node.jjtGetChild(0).jjtAccept(this, data);
-/*=======
-        }else {
-            d = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
-        }
-        Datastruct d = new Datastruct();
-        Datastruct tmp;
-        for(int i =0 ; i < node.jjtGetNumChildren(); i++){
-            tmp = (Datastruct) node.jjtGetChild(i).jjtAccept(this, data);
-            if(tmp.addr != null)
-                d.addr += tmp.addr;
-        }
-        Datastruct d = new Datastruct();
-        if(node.getOps().size() > 0){
-            BoolLabel b = (BoolLabel)data;
-            Datastruct B1 = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
-            Datastruct B2 = (Datastruct) node.jjtGetChild(1).jjtAccept(this, data);
-            writer.println("if " + B1.addr + " " + node.getOps().elementAt(0) + " " + B2.addr + " goto" + b.lTrue);
-            writer.println("goto " + b.lFalse);
-        }else
-            d = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
-        return d;*/
     }
 
 
@@ -372,7 +339,6 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
         return d;
     }
 
-
     /*
     si le type de la variable est booléenne, il faudra généré des goto ici.
     le truc est de faire un "if value == 1 goto Label".
@@ -381,16 +347,13 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
     @Override
     public Object visit(ASTIdentifier node, Object data) {
         Datastruct d;
-        if(SymbolTable.getOrDefault(node.getValue(), VarType.Number) == VarType.Number){
-            d = new Datastruct(node.getValue(), SymbolTable.getOrDefault(node.getValue(), VarType.Number));
+        if(SymbolTable.get(node.getValue()) == VarType.Number){
+            d = new Datastruct(node.getValue(), SymbolTable.get(node.getValue()));
         }else {
             BoolLabel b = (BoolLabel) data;
-            d = new Datastruct(node.getValue(), SymbolTable.getOrDefault(node.getValue(), VarType.Number));
-            Node parent = node.jjtGetParent();
-            /*if(){
-                writer.println("if " + d.addr + " == 1 goto" + b.lTrue);
-                writer.println("goto" + b.lFalse);
-            }*/
+            d = new Datastruct(node.getValue(), SymbolTable.get(node.getValue()));
+            writer.println("if " + d.addr + " == 1 goto" + b.lTrue);
+            writer.println("goto" + b.lFalse);
         }
         return d;
     }
