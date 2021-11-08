@@ -190,7 +190,7 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
         Datastruct tmp;
         for(int i = 0; i < node.jjtGetNumChildren(); i++){
              tmp = (Datastruct) node.jjtGetChild(i).jjtAccept(this, data);
-            if(tmp.addr != null)
+            if(tmp!=null && tmp.addr != null)
                 d.addr += tmp.addr;
         }
         return d;
@@ -261,7 +261,6 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
             }
             //d.addr = addr;
         }else d = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
-
         return d;
     }
 
@@ -387,8 +386,11 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
         }else {
             BoolLabel b = (BoolLabel) data;
             d = new Datastruct(node.getValue(), SymbolTable.getOrDefault(node.getValue(), VarType.Number));
-            /*writer.println("if " + d.addr + " == 1 goto" + b.lTrue);
-            writer.println("goto" + b.lFalse);*/
+            Node parent = node.jjtGetParent();
+            /*if(){
+                writer.println("if " + d.addr + " == 1 goto" + b.lTrue);
+                writer.println("goto" + b.lFalse);
+            }*/
         }
         return d;
     }
