@@ -309,11 +309,9 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
     public Object visit(ASTNotExpr node, Object data) {
         Datastruct d;
         if((node.getOps().size() % 2) != 0){
-            d = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
-            String addr = genId();
-            String op = (String) node.getOps().elementAt(node.getOps().size() - 1);
-            writer.print(addr + " = "+ op + d.addr);
-
+            BoolLabel b = (BoolLabel) data;
+            BoolLabel firstBool = new BoolLabel(b.lFalse, b.lTrue);
+            return (Datastruct)  node.jjtGetChild(0).jjtAccept(this, firstBool);
         }else {
             d = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
         }
