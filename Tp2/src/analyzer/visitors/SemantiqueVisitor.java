@@ -47,7 +47,6 @@ public class SemantiqueVisitor implements ParserVisitor {
 
     @Override
     public Object visit(SimpleNode node, Object data) {
-//        node.childrenAccept(this, data);
         return null;
     }
 
@@ -153,14 +152,6 @@ public class SemantiqueVisitor implements ParserVisitor {
     }
 
     /*
-    Méthode recommandée à implémenter puisque vous remarquerez que quelques fonctions ont exactement le même code! N'oubliez
-    -pas que la qualité du code est évalué :)
-     */
-    private void callChildenCond(SimpleNode node) {
-
-    }
-
-    /*
     les structures conditionnelle doivent vérifier que leur expression de condition est de type booléenne
     On doit aussi compter les conditions dans les variables IF et WHILE
      */
@@ -192,7 +183,6 @@ public class SemantiqueVisitor implements ParserVisitor {
     @Override
     public Object visit(ASTAssignStmt node, Object data) throws SemantiqueError {
         String varName = ((ASTIdentifier) node.jjtGetChild(0)).getValue();
-//        SimpleNode normalDeclarationType = ((ASTExpr) node.jjtGetChild(1));
         if(symbolTable.containsKey(varName)){
             DataStruct varData = new DataStruct(symbolTable.get(varName));
             node.childrenAccept(this, varData);
@@ -309,10 +299,12 @@ public class SemantiqueVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTUnaExpr node, Object data) {
+        node.childrenAccept(this, data);
         if(!node.getOps().isEmpty()) {
             OP += node.getOps().size();
+            if(((DataStruct)data).type != VarType.num)
+                throw new SemantiqueError(String.format("Invalid type in expression"));
         }
-        node.childrenAccept(this, data);
         return null;
     }
 

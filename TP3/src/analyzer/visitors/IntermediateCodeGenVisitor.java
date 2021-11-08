@@ -1,6 +1,7 @@
 package analyzer.visitors;
 
 import analyzer.ast.*;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 
 import javax.xml.crypto.Data;
 import java.io.PrintWriter;
@@ -148,8 +149,10 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTAssignStmt node, Object data) {
-        Datastruct id = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
-        if(id.type == VarType.Number){
+        ASTIdentifier identifier = (ASTIdentifier)node.jjtGetChild(0);
+        VarType type = SymbolTable.get(identifier.getValue());
+        if(type == VarType.Number){
+            Datastruct id = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
             Datastruct d = (Datastruct) node.jjtGetChild(1).jjtAccept(this, data);
             writer.println(id.addr +" = "+ d.addr);
         }else{
@@ -157,6 +160,7 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
             String labelFalse = genLabel();
             BoolLabel b = new BoolLabel(labelTrue, labelFalse);
             //Ici il faut générer les deux cases. Problème est qu'il faut set la valeur bool pour faire 2 cas proprement
+            Datastruct id = (Datastruct) node.jjtGetChild(0).jjtAccept(this, b);
             Datastruct d = (Datastruct) node.jjtGetChild(1).jjtAccept(this, b);
             writer.println(b.lTrue);
             writer.println(id.addr +" = 1");
@@ -290,6 +294,27 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
             return null;
         }
         return node.jjtGetChild(0).jjtAccept(this, data);
+/*=======
+        }else {
+            d = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
+        }
+        Datastruct d = new Datastruct();
+        Datastruct tmp;
+        for(int i =0 ; i < node.jjtGetNumChildren(); i++){
+            tmp = (Datastruct) node.jjtGetChild(i).jjtAccept(this, data);
+            if(tmp.addr != null)
+                d.addr += tmp.addr;
+        }
+        Datastruct d = new Datastruct();
+        if(node.getOps().size() > 0){
+            BoolLabel b = (BoolLabel)data;
+            Datastruct B1 = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
+            Datastruct B2 = (Datastruct) node.jjtGetChild(1).jjtAccept(this, data);
+            writer.println("if " + B1.addr + " " + node.getOps().elementAt(0) + " " + B2.addr + " goto" + b.lTrue);
+            writer.println("goto " + b.lFalse);
+        }else
+            d = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
+        return d;*/
     }
 
 
@@ -356,7 +381,16 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTIdentifier node, Object data) {
-        return new Datastruct(node.getValue(), SymbolTable.getOrDefault(node.getValue(), VarType.Number));
+        Datastruct d;
+        if(SymbolTable.getOrDefault(node.getValue(), VarType.Number) == VarType.Number){
+            d = new Datastruct(node.getValue(), SymbolTable.getOrDefault(node.getValue(), VarType.Number));
+        }else {
+            BoolLabel b = (BoolLabel) data;
+            d = new Datastruct(node.getValue(), SymbolTable.getOrDefault(node.getValue(), VarType.Number));
+            /*writer.println("if " + d.addr + " == 1 goto" + b.lTrue);
+            writer.println("goto" + b.lFalse);*/
+        }
+        return d;
     }
 
     @Override
@@ -374,7 +408,6 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
     private class Datastruct {
         String addr;
         VarType type;
-        BoolLabel lbool;
 
         public Datastruct() {addr = "";}
 
