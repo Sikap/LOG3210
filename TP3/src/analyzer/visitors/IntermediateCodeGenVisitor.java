@@ -149,7 +149,9 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTAssignStmt node, Object data) {
+
         String identifierName = ((ASTIdentifier)node.jjtGetChild(0)).getValue();
+
         VarType type = SymbolTable.get(identifierName);
         if(type == VarType.Number){
             Datastruct d = (Datastruct) node.jjtGetChild(1).jjtAccept(this, data);
@@ -158,13 +160,12 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
             String labelTrue = genLabel();
             String labelFalse = genLabel();
             BoolLabel b = new BoolLabel(labelTrue, labelFalse);
-            Datastruct id = (Datastruct) node.jjtGetChild(0).jjtAccept(this, b);
-            Datastruct d = (Datastruct) node.jjtGetChild(1).jjtAccept(this, b);
+            node.jjtGetChild(1).jjtAccept(this, b);
             writer.println(b.lTrue);
-            writer.println(id.addr +" = 1");
+            writer.println(identifierName +" = 1");
             writer.println("goto " + (String) data);
             writer.println(b.lFalse);
-            writer.println(id.addr +" = 0");
+            writer.println(identifierName +" = 0");
         }
         return null;
     }
@@ -352,8 +353,8 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
         }else {
             BoolLabel b = (BoolLabel) data;
             d = new Datastruct(node.getValue(), SymbolTable.get(node.getValue()));
-            writer.println("if " + d.addr + " == 1 goto" + b.lTrue);
-            writer.println("goto" + b.lFalse);
+            writer.println("if " + d.addr + " == 1 goto " + b.lTrue);
+            writer.println("goto " + b.lFalse);
         }
         return d;
     }
