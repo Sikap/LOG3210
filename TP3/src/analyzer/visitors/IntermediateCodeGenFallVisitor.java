@@ -51,7 +51,9 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTProgram node, Object data)  {
-        node.childrenAccept(this, data);
+        String label = genLabel();
+        node.childrenAccept(this, label);
+        writer.println(label);
         return null;
     }
 
@@ -75,20 +77,38 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTBlock node, Object data) {
-        node.childrenAccept(this, data);
-
+        String endLabel =  data.toString();
+        for(int i=0; i < node.jjtGetNumChildren(); i++){
+            if(i == node.jjtGetNumChildren() - 1){
+                node.jjtGetChild(i).jjtAccept(this, endLabel);
+            }else{
+                String beginStatement = genLabel();
+                node.jjtGetChild(i).jjtAccept(this, beginStatement);
+                this.writer.println(beginStatement);
+            }
+        }
         return null;
     }
 
     @Override
     public Object visit(ASTStmt node, Object data) {
-        node.childrenAccept(this, data);
+        for(int i=0; i< node.jjtGetNumChildren(); i++){
+            node.jjtGetChild(i).jjtAccept(this,data);
+        }
         return null;
     }
 
     @Override
     public Object visit(ASTForStmt node, Object data) {
-        node.childrenAccept(this, data);
+        String AssgnLabel = genLabel();
+        node.jjtGetChild(0).jjtAccept(this, AssgnLabel);
+        this.writer.println(AssgnLabel);
+        BoolLabel boolLabel = new BoolLabel(genLabel(), (String) data);
+        node.jjtGetChild(1).jjtAccept(this, boolLabel);
+        this.writer.println(boolLabel.lTrue);
+        node.jjtGetChild(3).jjtAccept(this, AssgnLabel);
+        node.jjtGetChild(2).jjtAccept(this, AssgnLabel);
+        this.writer.println("goto " + AssgnLabel);
         return null;
     }
 
@@ -97,23 +117,62 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTIfStmt node, Object data) {
-        node.childrenAccept(this, data);
-
+        if(node.jjtGetNumChildren() == 2){
+            String label = genLabel();
+            BoolLabel boolLabel = new BoolLabel(label, data.toString());
+            node.jjtGetChild(0).jjtAccept(this, boolLabel);
+            this.writer.println(boolLabel.lTrue);
+            node.jjtGetChild(1).jjtAccept(this, data);
+        }
+        else {
+            String label1 = genLabel();
+            String label2 = genLabel();
+            BoolLabel boolLabel = new BoolLabel(label1, label2);
+            node.jjtGetChild(0).jjtAccept(this, boolLabel);
+            this.writer.println(boolLabel.lTrue);
+            node.jjtGetChild(1).jjtAccept(this, data);
+            this.writer.println("goto " + data);
+            this.writer.println(boolLabel.lFalse);
+            node.jjtGetChild(2).jjtAccept(this, data);
+        }
         return null;
     }
 
     @Override
     public Object visit(ASTWhileStmt node, Object data) {
-        node.childrenAccept(this, data);
-
+        String begin = genLabel();
+        BoolLabel boolLabel = new BoolLabel(genLabel(), data.toString());
+        this.writer.println(begin);
+        //Visite de l'expr booleene B
+        node.jjtGetChild(0).jjtAccept(this, boolLabel);
+        this.writer.println(boolLabel.lTrue);
+        //Visite du stmt ou block S1
+        node.jjtGetChild(1).jjtAccept(this, begin);
+        this.writer.println("goto " + begin);
         return null;
     }
 
 
     @Override
     public Object visit(ASTAssignStmt node, Object data) {
-        node.childrenAccept(this, data);
 
+        String identifierName = ((ASTIdentifier)node.jjtGetChild(0)).getValue();
+
+        VarType type = SymbolTable.get(identifierName);
+        if(type == VarType.Number){
+            Datastruct d = (Datastruct) node.jjtGetChild(1).jjtAccept(this, data);
+            writer.println(identifierName +" = "+ d.addr);
+        }else{
+            String labelTrue = genLabel();
+            String labelFalse = genLabel();
+            BoolLabel b = new BoolLabel(labelTrue, labelFalse);
+            node.jjtGetChild(1).jjtAccept(this, b);
+            writer.println(b.lTrue);
+            writer.println(identifierName +" = 1");
+            writer.println("goto " + (String) data);
+            writer.println(b.lFalse);
+            writer.println(identifierName +" = 0");
+        }
         return null;
     }
 
@@ -135,48 +194,104 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
     la taille de ops sera toujours 1 de moins que la taille de jjtGetNumChildren
      */
     public Object generateCodeForAddAndMultiplication(SimpleNode node, Object data, Vector<String> ops) {
-
-        return null;
+        Datastruct d = new Datastruct(genId(), VarType.Number);
+        Datastruct tmp;
+        StringBuilder addr = new StringBuilder();
+        for(int i=0 ; i < node.jjtGetNumChildren(); i++){
+            tmp = (Datastruct) node.jjtGetChild(i).jjtAccept(this, data);
+            if(tmp.addr != null)
+                addr.append(tmp.addr);
+            if(i < ops.size())
+                addr.append(" ").append(ops.elementAt(i)).append(" ");
+        }
+        writer.println(d.addr + " = " + addr);
+        return d;
     }
 
     @Override
     public Object visit(ASTAddExpr node, Object data) {
-        node.childrenAccept(this, data);
-
-        return null;
+        Datastruct d;
+        if(node.getOps().size() > 0){
+            d = (Datastruct) generateCodeForAddAndMultiplication(node, data, node.getOps());
+        }else {
+            d = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
+        }
+        return d;
     }
 
     @Override
     public Object visit(ASTMulExpr node, Object data) {
-        node.childrenAccept(this, data);
-
-        return null;
+        Datastruct d;
+        if(node.getOps().size() > 0){
+            d = (Datastruct) generateCodeForAddAndMultiplication(node, data, node.getOps());
+        }else {
+            d = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
+        }
+        return d;
     }
 
     //UnaExpr est presque pareil au deux précédente. la plus grosse différence est qu'il ne va pas
     //chercher un deuxième noeud enfant pour avoir une valeur puisqu'il s'agit d'une opération unaire.
     @Override
     public Object visit(ASTUnaExpr node, Object data) {
-        node.childrenAccept(this, data);
-
-        return null;
+        Datastruct d;
+        if(node.getOps().size() > 0){
+            d = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
+            Datastruct tmp;
+            for(int i =0; i < node.getOps().size(); i++){
+                tmp = new Datastruct( genId(), VarType.Number);
+                writer.println(tmp.addr + " = " + node.getOps().elementAt(0) + " " + d.addr);
+                d = tmp;
+            }
+        }else d = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
+        return d;
     }
 
     //expression logique
     @Override
     public Object visit(ASTBoolExpr node, Object data) {
-        node.childrenAccept(this, data);
-
-        return null;
+        if(!node.getOps().isEmpty()){
+            String op = node.getOps().elementAt(0).toString();
+            BoolLabel dataBl = (BoolLabel) data;
+            //B1
+            BoolLabel firstBoolLabel = new BoolLabel("", "");
+            //B2
+            BoolLabel secondBool = new BoolLabel("", "");
+            if(op.equals("&&")){
+                firstBoolLabel.lTrue = genLabel();
+                firstBoolLabel.lFalse = dataBl.lFalse;
+                secondBool.lTrue = dataBl.lTrue;
+                secondBool.lFalse = dataBl.lFalse;
+                node.jjtGetChild(0).jjtAccept(this, firstBoolLabel);
+                this.writer.println(firstBoolLabel.lTrue);
+                node.jjtGetChild(1).jjtAccept(this, secondBool);
+            } else if(op.equals("||")){
+                firstBoolLabel.lTrue = dataBl.lTrue;
+                firstBoolLabel.lFalse = genLabel();
+                secondBool.lTrue = dataBl.lTrue;
+                secondBool.lFalse = dataBl.lFalse;
+                node.jjtGetChild(0).jjtAccept(this, firstBoolLabel);
+                this.writer.println(firstBoolLabel.lFalse);
+                node.jjtGetChild(1).jjtAccept(this, secondBool);
+            }
+            return null;
+        }
+        return node.jjtGetChild(0).jjtAccept(this, data);
     }
 
 
 
     @Override
     public Object visit(ASTCompExpr node, Object data) {
-        node.childrenAccept(this, data);
-
-        return null;
+        if(node.jjtGetNumChildren() > 1) {
+            BoolLabel boolLabel = (BoolLabel) data;
+            Datastruct firstExpr = (Datastruct) node.jjtGetChild(0).jjtAccept(this, null);
+            Datastruct secondExpr = (Datastruct) node.jjtGetChild(1).jjtAccept(this, null);
+            this.writer.println("if " + firstExpr.addr + " " + node.getValue() + " " + secondExpr.addr + " goto " + boolLabel.lTrue);
+            this.writer.println("goto " + boolLabel.lFalse);
+            return node.getValue();
+        }
+        return  (Datastruct)  node.jjtGetChild(0).jjtAccept(this, data);
     }
 
 
@@ -187,16 +302,20 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTNotExpr node, Object data) {
-        node.childrenAccept(this, data);
-
-        return null;
+        Datastruct d;
+        if((node.getOps().size() % 2) != 0){
+            BoolLabel b = (BoolLabel) data;
+            BoolLabel firstBool = new BoolLabel(b.lFalse, b.lTrue);
+            return (Datastruct)  node.jjtGetChild(0).jjtAccept(this, firstBool);
+        }else {
+            d = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
+        }
+        return d;
     }
 
     @Override
     public Object visit(ASTGenValue node, Object data) {
-        node.childrenAccept(this, data);
-
-        return null;
+        return node.childrenAccept(this, data);
     }
 
     /*
@@ -205,9 +324,13 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTBoolValue node, Object data) {
-        node.childrenAccept(this, data);
-
-        return null;
+        Datastruct d = new Datastruct(Integer.toString(node.getValue() ? 1 : 0), VarType.Bool);
+        BoolLabel b = (BoolLabel) data;
+        if(node.getValue())
+            writer.println("goto " + b.lTrue);
+        else
+            writer.println("goto " + b.lFalse);
+        return d;
     }
 
 
@@ -218,23 +341,40 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTIdentifier node, Object data) {
-        node.childrenAccept(this, data);
-
-        return null;
+        Datastruct d;
+        if(SymbolTable.get(node.getValue()) == VarType.Number){
+            d = new Datastruct(node.getValue(), SymbolTable.get(node.getValue()));
+        }else {
+            BoolLabel b = (BoolLabel) data;
+            d = new Datastruct(node.getValue(), SymbolTable.get(node.getValue()));
+            writer.println("if " + d.addr + " == 1 goto " + b.lTrue);
+            writer.println("goto " + b.lFalse);
+        }
+        return d;
     }
 
 
     @Override
     public Object visit(ASTIntValue node, Object data) {
-        node.childrenAccept(this, data);
-
-        return null;
+        return new Datastruct(Integer.toString(node.getValue()), VarType.Number);
     }
 
     //des outils pour vous simplifier la vie et vous enligner dans le travail
     public enum VarType {
         Bool,
         Number
+    }
+
+    private class Datastruct {
+        String addr;
+        VarType type;
+
+        public Datastruct() {addr = "";}
+
+        public Datastruct(String p_addr, VarType p_type){
+            type = p_type;
+            addr = p_addr;
+        }
     }
 
     //utile surtout pour envoyé de l'informations au enfant des expressions logiques.

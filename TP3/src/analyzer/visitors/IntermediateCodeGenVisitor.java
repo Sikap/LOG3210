@@ -353,7 +353,6 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTIntValue node, Object data) {
-        node.childrenAccept(this, data);
         return new Datastruct(Integer.toString(node.getValue()), VarType.Number);
     }
 
