@@ -160,8 +160,8 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
 
         VarType type = SymbolTable.get(identifierName);
         if(type == VarType.Number){
-            Datastruct d = (Datastruct) node.jjtGetChild(1).jjtAccept(this, data);
-            writer.println(identifierName +" = "+ d.addr);
+            String stmt = (String) node.jjtGetChild(1).jjtAccept(this, data);
+            writer.println(identifierName +" = "+ stmt);
         }else{
             String labelTrue = genLabel();
             String labelFalse = genLabel();
@@ -180,9 +180,7 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTExpr node, Object data){
-        node.childrenAccept(this, data);
-
-        return null;
+        return node.jjtGetChild(0).jjtAccept(this, data);
     }
 
     //Expression arithmétique
@@ -194,57 +192,57 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
     la taille de ops sera toujours 1 de moins que la taille de jjtGetNumChildren
      */
     public Object generateCodeForAddAndMultiplication(SimpleNode node, Object data, Vector<String> ops) {
-        Datastruct d = new Datastruct(genId(), VarType.Number);
-        Datastruct tmp;
+        String exp = genId();
+        String tmp;
         StringBuilder addr = new StringBuilder();
         for(int i=0 ; i < node.jjtGetNumChildren(); i++){
-            tmp = (Datastruct) node.jjtGetChild(i).jjtAccept(this, data);
-            if(tmp.addr != null)
-                addr.append(tmp.addr);
+            tmp = (String) node.jjtGetChild(i).jjtAccept(this, data);
+            if(tmp != null)
+                addr.append(tmp);
             if(i < ops.size())
                 addr.append(" ").append(ops.elementAt(i)).append(" ");
         }
-        writer.println(d.addr + " = " + addr);
-        return d;
+        writer.println(exp + " = " + addr);
+        return exp;
     }
 
     @Override
     public Object visit(ASTAddExpr node, Object data) {
-        Datastruct d;
+        String exp;
         if(node.getOps().size() > 0){
-            d = (Datastruct) generateCodeForAddAndMultiplication(node, data, node.getOps());
+            exp = (String) generateCodeForAddAndMultiplication(node, data, node.getOps());
         }else {
-            d = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
+            exp = (String) node.jjtGetChild(0).jjtAccept(this, data);
         }
-        return d;
+        return exp;
     }
 
     @Override
     public Object visit(ASTMulExpr node, Object data) {
-        Datastruct d;
+        String exp;
         if(node.getOps().size() > 0){
-            d = (Datastruct) generateCodeForAddAndMultiplication(node, data, node.getOps());
+            exp = (String) generateCodeForAddAndMultiplication(node, data, node.getOps());
         }else {
-            d = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
+            exp = (String) node.jjtGetChild(0).jjtAccept(this, data);
         }
-        return d;
+        return exp;
     }
 
     //UnaExpr est presque pareil au deux précédente. la plus grosse différence est qu'il ne va pas
     //chercher un deuxième noeud enfant pour avoir une valeur puisqu'il s'agit d'une opération unaire.
     @Override
     public Object visit(ASTUnaExpr node, Object data) {
-        Datastruct d;
+        String exp = "";
         if(node.getOps().size() > 0){
-            d = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
-            Datastruct tmp;
+            exp = (String) node.jjtGetChild(0).jjtAccept(this, data);
+            String tmp = "";
             for(int i =0; i < node.getOps().size(); i++){
-                tmp = new Datastruct( genId(), VarType.Number);
-                writer.println(tmp.addr + " = " + node.getOps().elementAt(0) + " " + d.addr);
-                d = tmp;
+                tmp = genId();
+                writer.println(tmp + " = " + node.getOps().elementAt(0) + " " + exp);
+                exp = tmp;
             }
-        }else d = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
-        return d;
+        }else exp = (String) node.jjtGetChild(0).jjtAccept(this, data);
+        return exp;
     }
 
     //expression logique
@@ -285,13 +283,13 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
     public Object visit(ASTCompExpr node, Object data) {
         if(node.jjtGetNumChildren() > 1) {
             BoolLabel boolLabel = (BoolLabel) data;
-            Datastruct firstExpr = (Datastruct) node.jjtGetChild(0).jjtAccept(this, null);
-            Datastruct secondExpr = (Datastruct) node.jjtGetChild(1).jjtAccept(this, null);
-            this.writer.println("if " + firstExpr.addr + " " + node.getValue() + " " + secondExpr.addr + " goto " + boolLabel.lTrue);
+            String firstExpr = (String) node.jjtGetChild(0).jjtAccept(this, null);
+            String secondExpr = (String) node.jjtGetChild(1).jjtAccept(this, null);
+            this.writer.println("if " + firstExpr + " " + node.getValue() + " " + secondExpr + " goto " + boolLabel.lTrue);
             this.writer.println("goto " + boolLabel.lFalse);
             return node.getValue();
         }
-        return  (Datastruct)  node.jjtGetChild(0).jjtAccept(this, data);
+        return  (String)  node.jjtGetChild(0).jjtAccept(this, data);
     }
 
 
@@ -302,20 +300,20 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTNotExpr node, Object data) {
-        Datastruct d;
+        String d = "";
         if((node.getOps().size() % 2) != 0){
             BoolLabel b = (BoolLabel) data;
             BoolLabel firstBool = new BoolLabel(b.lFalse, b.lTrue);
-            return (Datastruct)  node.jjtGetChild(0).jjtAccept(this, firstBool);
+            return (String)  node.jjtGetChild(0).jjtAccept(this, firstBool);
         }else {
-            d = (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
+            d = (String) node.jjtGetChild(0).jjtAccept(this, data);
         }
         return d;
     }
 
     @Override
     public Object visit(ASTGenValue node, Object data) {
-        return node.childrenAccept(this, data);
+        return node.jjtGetChild(0).jjtAccept(this, data);
     }
 
     /*
@@ -324,13 +322,13 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTBoolValue node, Object data) {
-        Datastruct d = new Datastruct(Integer.toString(node.getValue() ? 1 : 0), VarType.Bool);
+        String exp = Integer.toString(node.getValue() ? 1 : 0);
         BoolLabel b = (BoolLabel) data;
         if(node.getValue())
             writer.println("goto " + b.lTrue);
         else
             writer.println("goto " + b.lFalse);
-        return d;
+        return exp;
     }
 
 
@@ -341,22 +339,22 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTIdentifier node, Object data) {
-        Datastruct d;
+        String idName = "";
         if(SymbolTable.get(node.getValue()) == VarType.Number){
-            d = new Datastruct(node.getValue(), SymbolTable.get(node.getValue()));
+            idName = node.getValue();
         }else {
             BoolLabel b = (BoolLabel) data;
-            d = new Datastruct(node.getValue(), SymbolTable.get(node.getValue()));
-            writer.println("if " + d.addr + " == 1 goto " + b.lTrue);
+            idName = node.getValue();
+            writer.println("if " + idName + " == 1 goto " + b.lTrue);
             writer.println("goto " + b.lFalse);
         }
-        return d;
+        return idName;
     }
 
 
     @Override
     public Object visit(ASTIntValue node, Object data) {
-        return new Datastruct(Integer.toString(node.getValue()), VarType.Number);
+        return Integer.toString(node.getValue());
     }
 
     //des outils pour vous simplifier la vie et vous enligner dans le travail
@@ -365,17 +363,6 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
         Number
     }
 
-    private class Datastruct {
-        String addr;
-        VarType type;
-
-        public Datastruct() {addr = "";}
-
-        public Datastruct(String p_addr, VarType p_type){
-            type = p_type;
-            addr = p_addr;
-        }
-    }
 
     //utile surtout pour envoyé de l'informations au enfant des expressions logiques.
     private class BoolLabel {
