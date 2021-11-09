@@ -102,7 +102,15 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTForStmt node, Object data) {
-        node.childrenAccept(this, data);
+        String AssgnLabel = genLabel();
+        node.jjtGetChild(0).jjtAccept(this, AssgnLabel);
+        this.writer.println(AssgnLabel);
+        BoolLabel boolLabel = new BoolLabel(genLabel(), (String) data);
+        node.jjtGetChild(1).jjtAccept(this, boolLabel);
+        this.writer.println(boolLabel.lTrue);
+        node.jjtGetChild(3).jjtAccept(this, AssgnLabel);
+        node.jjtGetChild(2).jjtAccept(this, AssgnLabel);
+        this.writer.println("goto " + AssgnLabel);
         return null;
     }
 
@@ -171,17 +179,9 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
     }
 
 
-
     @Override
     public Object visit(ASTExpr node, Object data){
-        /*Datastruct d = new Datastruct();
-        Datastruct tmp;
-        for(int i = 0; i < node.jjtGetNumChildren(); i++){
-             tmp = (Datastruct) node.jjtGetChild(i).jjtAccept(this, data);
-            if(tmp!=null && tmp.addr != null)
-                d.addr += tmp.addr;
-        }*/
-        return (Datastruct) node.jjtGetChild(0).jjtAccept(this, data);
+        return node.jjtGetChild(0).jjtAccept(this, data);
     }
 
     //Expression arithmétique
@@ -290,9 +290,9 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
     public Object visit(ASTCompExpr node, Object data) {
         if(node.jjtGetNumChildren() > 1) {
             BoolLabel boolLabel = (BoolLabel) data;
-            String firstExpr = node.jjtGetChild(0).jjtAccept(this, null).toString();
-            String secondExpr = node.jjtGetChild(1).jjtAccept(this, null).toString();
-            this.writer.println("if " + firstExpr + " " + node.getValue() + " " + secondExpr + " goto " + boolLabel.lTrue);
+            Datastruct firstExpr = (Datastruct) node.jjtGetChild(0).jjtAccept(this, null);
+            Datastruct secondExpr = (Datastruct) node.jjtGetChild(1).jjtAccept(this, null);
+            this.writer.println("if " + firstExpr.addr + " " + node.getValue() + " " + secondExpr.addr + " goto " + boolLabel.lTrue);
             this.writer.println("goto " + boolLabel.lFalse);
             return node.getValue();
         }
