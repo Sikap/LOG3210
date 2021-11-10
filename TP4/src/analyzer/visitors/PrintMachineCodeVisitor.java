@@ -82,6 +82,7 @@ public class PrintMachineCodeVisitor implements ParserVisitor {
 
         // TODO: Modify CODE to add the needed MachLine.
         //       here the type of Assignment is "assigned = left op right"
+        CODE.add(new MachLine(op, assign, left, right));
         return null;
     }
 
@@ -95,7 +96,7 @@ public class PrintMachineCodeVisitor implements ParserVisitor {
         // TODO: Modify CODE to add the needed MachLine.
         //       here the type of Assignment is "assigned = - right"
         //       suppose the left part to be the constant #O
-
+        CODE.add(new MachLine("-", assign, "#0", right));
         return null;
     }
 
@@ -109,6 +110,7 @@ public class PrintMachineCodeVisitor implements ParserVisitor {
         // TODO: Modify CODE to add the needed MachLine.
         //       here the type of Assignment is "assigned = right"
         //       suppose the left part to be the constant #O
+        CODE.add(new MachLine("+", assign, "#0", right));
         return null;
     }
 
