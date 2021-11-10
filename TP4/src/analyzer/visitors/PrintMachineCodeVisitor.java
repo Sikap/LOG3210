@@ -218,10 +218,45 @@ public class PrintMachineCodeVisitor implements ParserVisitor {
 
     private void compute_LifeVar() {
         // TODO: Implement LifeVariable algorithm on the CODE array (for basic bloc)
+        for (MachLine node: CODE) {
+            node.Next_IN = new NextUse();
+            node.Next_OUT = new NextUse();
+        }
+        CODE.get(CODE.size()-1).Life_OUT = new HashSet<>(RETURNED);
+        for (int i=CODE.size()-1; i >= 0; i--) {
+            if(i < (CODE.size() - 1)) {
+                CODE.get(i).Life_OUT = CODE.get(i + 1).Life_IN;
+            }
+            CODE.get(i).Life_IN.addAll(CODE.get(i).Life_OUT);
+            CODE.get(i).Life_IN.removeAll(CODE.get(i).DEF);
+            CODE.get(i).Life_IN.addAll(CODE.get(i).REF);
+        }
     }
 
     private void compute_NextUse() {
         // TODO: Implement NextUse algorithm on the CODE array (for basic bloc)
+        for (MachLine node: CODE) {
+            node.Next_IN = new NextUse();
+            node.Next_OUT = new NextUse();
+        }
+
+        for (int i = CODE.size()-1; i >=0; i--) {
+            if (i < (CODE.size()-1)) {
+                CODE.get(i).Next_OUT = CODE.get(i + 1).Next_IN;
+            }
+
+            for (Map.Entry<String, ArrayList<Integer>> entry: CODE.get(i).Next_OUT.nextuse.entrySet()) {
+                if (!CODE.get(i).DEF.contains(entry.getKey())) {
+                    for (Integer value :entry.getValue()) {
+                        CODE.get(i).Next_IN.add(entry.getKey(), value);
+                    }
+                }
+            }
+
+            for (String ref: CODE.get(i).REF) {
+                CODE.get(i).Next_IN.add(ref, i);
+            }
+        }
     }
 
 
@@ -234,16 +269,21 @@ public class PrintMachineCodeVisitor implements ParserVisitor {
         // /!\ TODO this function should generate the LD and ST when needed
 
         // TODO: if var is a constant (starts with '#'), return var
-
+        if (var.charAt(0)=='#') {return var;}
         // TODO: if REGISTERS contains var, return "R"+index
-
+        if (REGISTERS.contains(var)) {return ("R"+ REGISTERS.indexOf(var));}
         // TODO: if REGISTERS size is not max (<REG), add var to REGISTERS and return "R"+index
-
+        if(REGISTERS.size()<REG){
+            REGISTERS.add(var);
+            return ("R"+REGISTERS.indexOf(var));
+        }
         // TODO: if REGISTERS has max size,
         //          put var in space of an other variable which is not used anymore
         //          or
         //          put var in space of var which as the largest next-use
+        else if (REGISTERS.size() == REG) {
 
+        }
         return null;
     }
 
@@ -251,7 +291,6 @@ public class PrintMachineCodeVisitor implements ParserVisitor {
         // TODO: Print the machine code (this function needs to be change)
         for (int i = 0; i < CODE.size(); i++) { // print the output
             m_writer.println("// Step " + i);
-
             m_writer.println(CODE.get(i));
         }
     }
