@@ -75,9 +75,9 @@ public class PrintMachineCodeVisitor implements ParserVisitor {
     public Object visit(ASTAssignStmt node, Object data) {
         // On ne visite pas les enfants puisque l'on va manuellement chercher leurs valeurs
         // On n'a rien a transférer aux enfants
-        String assign = (String) node.jjtGetChild(0).jjtAccept(this, null);
-        String left   = (String) node.jjtGetChild(1).jjtAccept(this, null);
         String right  = (String) node.jjtGetChild(2).jjtAccept(this, null);
+        String left   = (String) node.jjtGetChild(1).jjtAccept(this, null);
+        String assign = (String) node.jjtGetChild(0).jjtAccept(this, null);
         String op     = node.getOp();
 
         // TODO: Modify CODE to add the needed MachLine.
@@ -267,31 +267,88 @@ public class PrintMachineCodeVisitor implements ParserVisitor {
     // from the memory to be accessible in REGISTERS
     public String choose_register(String var, HashSet<String> life, NextUse next, boolean load_if_not_found) {
         // /!\ TODO this function should generate the LD and ST when needed
-
         // TODO: if var is a constant (starts with '#'), return var
         if (var.charAt(0)=='#') {return var;}
         // TODO: if REGISTERS contains var, return "R"+index
-        if (REGISTERS.contains(var)) {return ("R"+ REGISTERS.indexOf(var));}
+        if (REGISTERS.contains(var)) {return ("R" + REGISTERS.indexOf(var));}
         // TODO: if REGISTERS size is not max (<REG), add var to REGISTERS and return "R"+index
         if(REGISTERS.size()<REG){
             REGISTERS.add(var);
-            return ("R"+REGISTERS.indexOf(var));
+            MODIFIED.add("");
+            if(var.charAt(0) != 't')
+                m_writer.println("LD" + " R" +  REGISTERS.indexOf(var) + ", " +  var);
+            return ("R" + REGISTERS.indexOf(var));
         }
         // TODO: if REGISTERS has max size,
         //          put var in space of an other variable which is not used anymore
         //          or
         //          put var in space of var which as the largest next-use
         else if (REGISTERS.size() == REG) {
+            Integer maxEntry = -1;
+            int entryIndex = -1;
+            //put var in space of an other variable which is not used anymore
+            for(String reg_variable : REGISTERS){
+                if(!life.contains(reg_variable) || (!next.nextuse.containsKey(reg_variable) && load_if_not_found)){
+                    entryIndex = REGISTERS.indexOf(reg_variable);
+                   /*m_writer.println("LD" + " R" +  entryIndex + ", " +  var);
+                    REGISTERS.set(entryIndex, var);*/
+                }
+            }
+            if(entryIndex == -1){
+                //Case spill
+                // put var in space of var which as the largest next-use
+                // Search for max next use
+                for(String nextUseVar : next.nextuse.keySet()){
+                    ArrayList<Integer> arrayNextUseValues = next.nextuse.get(nextUseVar);
+                    if(REGISTERS.contains(nextUseVar)){
+                        for (Integer arrayNextUseValue : arrayNextUseValues) {
+                            if (arrayNextUseValue > maxEntry) {
+                                maxEntry = arrayNextUseValue;
+                                entryIndex = REGISTERS.indexOf(nextUseVar);
+                            }
+                        }
+                    }
+                }
+                if(entryIndex == -1)
+                    entryIndex = 0; //If not in next use and not in life we choose arbitrary register
 
+                if(MODIFIED.contains(var)){
+                    m_writer.println("ST " + REGISTERS.get(entryIndex) + ", " + "R" + entryIndex );
+                    MODIFIED.set(entryIndex, "");
+                }
+            }
+            if(var.charAt(0) != 't')
+                m_writer.println("LD" + " R" + entryIndex + ", " +  var);
+            REGISTERS.set(entryIndex, var);
+            return("R" + entryIndex);
         }
         return null;
     }
 
     public void print_machineCode() {
         // TODO: Print the machine code (this function needs to be change)
-        for (int i = 0; i < CODE.size(); i++) { // print the output
+
+        for (int i = 0; i < CODE.size(); i++) {
             m_writer.println("// Step " + i);
+            //Hashmap string pour build output ou string builder
+            String left_reg = "";
+            String right_reg= "";
+            String assign_reg= "";
+            left_reg = choose_register(CODE.get(i).LEFT, CODE.get(i).Life_IN, CODE.get(i).Next_OUT, false);
+            right_reg = choose_register(CODE.get(i).RIGHT, CODE.get(i).Life_IN, CODE.get(i).Next_OUT, false);
+            assign_reg = choose_register(CODE.get(i).ASSIGN, CODE.get(i).Life_IN, CODE.get(i).Next_OUT, true);
+            int test1 = REGISTERS.indexOf(CODE.get(i).ASSIGN);
+            String test2 = CODE.get(i).ASSIGN;
+            MODIFIED.set(REGISTERS.indexOf(CODE.get(i).ASSIGN), CODE.get(i).ASSIGN);
+            if (left_reg.charAt(0)!='#')
+                m_writer.println(CODE.get(i).OP + " " + assign_reg + ", " + left_reg + ", " + right_reg);
             m_writer.println(CODE.get(i));
+        }
+
+        //Get les var de retour des registres si présentes dans ceux-ci
+        for (String var_to_return : RETURNED) {
+            if(REGISTERS.contains(var_to_return))
+                m_writer.println("ST " + var_to_return + ", " + " R" + REGISTERS.indexOf(var_to_return));
         }
     }
 
