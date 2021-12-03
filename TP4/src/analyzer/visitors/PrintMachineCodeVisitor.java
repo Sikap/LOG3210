@@ -288,21 +288,27 @@ public class PrintMachineCodeVisitor implements ParserVisitor {
             int entryIndex = -1;
             //put var in space of an other variable which is not used anymore
             for(String reg_variable : REGISTERS){
-                if(!life.contains(reg_variable) || (!next.nextuse.containsKey(reg_variable) && load_if_not_found)){
-                    entryIndex = REGISTERS.indexOf(reg_variable);
-                   /*m_writer.println("LD" + " R" +  entryIndex + ", " +  var);
-                    REGISTERS.set(entryIndex, var);*/
+                if(!life.contains(reg_variable) || (!next.nextuse.containsKey(reg_variable) && load_if_not_found && entryIndex == -1)){
+                    if(!MODIFIED.contains(reg_variable))
+                        entryIndex = REGISTERS.indexOf(reg_variable);
                 }
+                /*if(load_if_not_found){
+                    if(!next.nextuse.containsKey(reg_variable))
+                        entryIndex = REGISTERS.indexOf(reg_variable);
+                }else{
+                    if(!next.nextuse.containsKey(reg_variable) && MODIFIED.contains(reg_variable) && entryIndex == -1)
+                        entryIndex = REGISTERS.indexOf(reg_variable);
+                }*/
             }
             if(entryIndex == -1){
-                //Case spill
+                // Case spill
                 // put var in space of var which as the largest next-use
                 // Search for max next use
                 for(String nextUseVar : next.nextuse.keySet()){
                     ArrayList<Integer> arrayNextUseValues = next.nextuse.get(nextUseVar);
                     if(REGISTERS.contains(nextUseVar)){
                         for (Integer arrayNextUseValue : arrayNextUseValues) {
-                            if (arrayNextUseValue > maxEntry) {
+                            if (arrayNextUseValue >= maxEntry) {
                                 maxEntry = arrayNextUseValue;
                                 entryIndex = REGISTERS.indexOf(nextUseVar);
                             }
@@ -317,6 +323,7 @@ public class PrintMachineCodeVisitor implements ParserVisitor {
                     MODIFIED.set(entryIndex, "");
                 }
             }
+
             if(var.charAt(0) != 't')
                 m_writer.println("LD" + " R" + entryIndex + ", " +  var);
             REGISTERS.set(entryIndex, var);
@@ -336,10 +343,15 @@ public class PrintMachineCodeVisitor implements ParserVisitor {
             String assign_reg= "";
             left_reg = choose_register(CODE.get(i).LEFT, CODE.get(i).Life_IN, CODE.get(i).Next_OUT, false);
             right_reg = choose_register(CODE.get(i).RIGHT, CODE.get(i).Life_IN, CODE.get(i).Next_OUT, false);
-            assign_reg = choose_register(CODE.get(i).ASSIGN, CODE.get(i).Life_IN, CODE.get(i).Next_OUT, true);
+            if(CODE.get(i).OP.equals("ADD") && CODE.get(i).LEFT.charAt(0) == '#') {
+                assign_reg = "R" + REGISTERS.indexOf(CODE.get(i).RIGHT);
+                REGISTERS.set(REGISTERS.indexOf(CODE.get(i).RIGHT), CODE.get(i).ASSIGN);
+            }else
+                assign_reg = choose_register(CODE.get(i).ASSIGN, CODE.get(i).Life_IN, CODE.get(i).Next_OUT, true);
             int test1 = REGISTERS.indexOf(CODE.get(i).ASSIGN);
             String test2 = CODE.get(i).ASSIGN;
             MODIFIED.set(REGISTERS.indexOf(CODE.get(i).ASSIGN), CODE.get(i).ASSIGN);
+
             if (left_reg.charAt(0)!='#')
                 m_writer.println(CODE.get(i).OP + " " + assign_reg + ", " + left_reg + ", " + right_reg);
             m_writer.println(CODE.get(i));
@@ -348,7 +360,7 @@ public class PrintMachineCodeVisitor implements ParserVisitor {
         //Get les var de retour des registres si présentes dans ceux-ci
         for (String var_to_return : RETURNED) {
             if(REGISTERS.contains(var_to_return))
-                m_writer.println("ST " + var_to_return + ", " + " R" + REGISTERS.indexOf(var_to_return));
+                m_writer.println("ST " + var_to_return + ", " + "R" + REGISTERS.indexOf(var_to_return));
         }
     }
 
